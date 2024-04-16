@@ -1,8 +1,6 @@
 what,1
 s,1
 wrong,1
-not,1
-good,1
 he,1
 s,1
 wrong,1
