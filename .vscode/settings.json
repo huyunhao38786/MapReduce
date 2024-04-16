@@ -99,6 +99,10 @@
         "numeric": "cpp",
         "random": "cpp",
         "ranges": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "__functional_base": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "utility": "cpp"
     }
 }

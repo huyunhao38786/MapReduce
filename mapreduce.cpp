@@ -5,7 +5,6 @@
 #include <cstdlib> // For exit() and EXIT_FAILURE
 #include <filesystem> // Requires C++17
 #include <thread>
-#include<bits/stdc++.h>
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
@@ -61,6 +60,7 @@ private:
     }
 
     void mapTask(const std::string& filePath, int mapTaskNumber, std::promise<void> promise) {
+        std::cout << "map task " << mapTaskNumber << " starts" << std::endl;
         std::vector<std::ofstream> outs(nReduce);
         for (int i = 0; i < nReduce; ++i) {
             outs[i].open(outputDir + "/map.part-" + std::to_string(mapTaskNumber) + "-" + std::to_string(i) + ".txt", std::ofstream::out | std::ofstream::app);
@@ -80,11 +80,12 @@ private:
         for (auto& out : outs) {
             out.close();
         }
-
+        std::cout << "map task " << mapTaskNumber << " ends" << std::endl;
         promise.set_value();
     }
 
     void reduceTask(int reduceTaskNumber) {
+        std::cout << "reduce task " << reduceTaskNumber << " starts" << std::endl;
         std::unordered_map<std::string, int> counts;
         for (int i = 0; i < nReduce; ++i) {
             std::ifstream inFile(outputDir + "/map.part-" + std::to_string(i) + "-" + std::to_string(reduceTaskNumber) + ".txt");
@@ -93,19 +94,26 @@ private:
                 std::istringstream lineStream(line);
                 std::string word;
                 int count;
-                while (lineStream >> word >> count) {
+                if (std::getline(lineStream, word, ',') && (lineStream >> count)) {
                     counts[word] += count;
                 }
             }
+            // for (auto& item : counts){
+            //     auto word = item.first;
+            //     auto cnt = item.second;
+            //     std::cout << reduceTaskNumber << " " << word << " " << cnt << std::endl;
+            // }
         }
 
         std::ofstream outFile(outputDir + "/reduce.part-" + std::to_string(reduceTaskNumber) + ".txt");
         for (const auto& [word, count] : counts) {
             outFile << word << "," << count << "\n";
         }
+        std::cout << "reduce task " << reduceTaskNumber << " ends" << std::endl;
     }
 
     void mergeOutput() {
+        std::cout << "merge the output files" << std::endl;
         std::ofstream finalOutput(outputDir + "/output.txt");
         for (int i = 0; i < nReduce; ++i) {
             std::ifstream reduceOutput(outputDir + "/reduce.part-" + std::to_string(i) + ".txt");
