@@ -200,12 +200,10 @@ public:
 
         condition.notify_all();
         // Wait for all map tasks to complete
-        std::cout << "Start wait map tasks" << std::endl;
         {
             std::unique_lock<std::mutex> lock(queue_mtx);
             condition.wait(lock, [this]{return nRemaining  == 0; });
         }
-        std::cout << "Complete wait map tasks" << std::endl;
 
         // Schedule reduce tasks
         for(int i = 0; i < nReduce; i++){
