@@ -1,1 +1,1 @@
-Welcome to the world of MapReduce. This programming model is essential for processing large data sets with a distributed algorithm, using a cluster. The process involves two main tasks: the Map task and the Reduce task. Map tasks handle splitting and mapping of data, while Reduce tasks shuffle and reduce the data to provide meaningful results. This model is widely used in big data analysis and has been popularized by systems like Hadoop.
+what's wrong. Not good. He's wrong.

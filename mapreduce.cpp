@@ -52,10 +52,18 @@ private:
     std::string processLine(const std::string& line) {
         std::string processed;
         for (char ch : line) {
-            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == ' ') {
+            if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
                 processed += std::tolower(ch);
+            } else {
+                if (!processed.empty() && processed.back() != ' ') {
+                    processed += ' ';
+                }
             }
         }
+        if (!processed.empty() && processed.back() == ' ') {
+            processed.pop_back();
+        }
+        std::cout << "processed: " << processed;
         return processed;
     }
 
@@ -69,7 +77,8 @@ private:
         std::ifstream inFile(filePath);
         std::string line;
         while (std::getline(inFile, line)) {
-            std::istringstream lineStream(line);
+            std::string processedLine = processLine(line);
+            std::istringstream lineStream(processedLine);
             std::string word;
             while (lineStream >> word) {
                 size_t reducerIndex = hashKey(word);
@@ -83,6 +92,7 @@ private:
         std::cout << "map task " << mapTaskNumber << " ends" << std::endl;
         promise.set_value();
     }
+
 
     void reduceTask(int reduceTaskNumber) {
         std::cout << "reduce task " << reduceTaskNumber << " starts" << std::endl;
