@@ -1,5 +1,10 @@
 Yifei Gao(yg578), Yunhao Hu(yh2233)
 
+# Quick Start
+```bash
+./master --input input --output output --nworkers 2 --nreduce 3
+```
+
 # Introduction
 This report introduces the implementation details of a MapReduce project designed to perform word counting tasks on a set of documents. The system architecture comprises a master server and worker nodes operating in a single-machine environment.
 
