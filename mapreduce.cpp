@@ -47,15 +47,16 @@ private:
     int nReduce;
 
     std::vector<std::thread> workers;
-    std::queue<std::function<void()>> tasks;
+    std::queue<std::function<void(int)>> tasks;
     std::mutex queue_mtx;
+    std::mutex log_mtx;
     std::condition_variable condition;
     int nRemaining{0};
     bool stop = false;
 
-    void worker() {
+    void worker(int workerId) {
         while(true) {
-            std::function<void()> task;
+            std::function<void(int)> task;
             {
                 std::unique_lock<std::mutex> lock(queue_mtx);
                 condition.wait(lock, [this]{ return !tasks.empty() || stop; });
@@ -63,7 +64,7 @@ private:
                 task = std::move(tasks.front());
                 tasks.pop();
             }
-            task();
+            task(workerId);
             {
                 std::unique_lock<std::mutex> lock(queue_mtx);
                 --nRemaining;
@@ -91,12 +92,13 @@ private:
         if (!processed.empty() && processed.back() == ' ') {
             processed.pop_back();
         }
-        std::cout << "processed: " << processed;
         return processed;
     }
 
-    void mapTask(const std::string& filePath, int mapTaskNumber) {
-        std::cout << "map task " << mapTaskNumber << " starts" << std::endl;
+    void mapTask(const std::string& filePath, int mapTaskNumber, int workerId) {
+        log_mtx.lock();
+        std::cout << "map task " << mapTaskNumber << " is assigned to worker " << workerId << " and starts" << std::endl;
+        log_mtx.unlock();
         std::vector<std::ofstream> outs(nReduce);
         for (int i = 0; i < nReduce; ++i) {
             outs[i].open(outputDir + "/map.part-" + std::to_string(mapTaskNumber) + "-" + std::to_string(i) + ".txt", std::ofstream::out | std::ofstream::app);
@@ -117,11 +119,15 @@ private:
         for (auto& out : outs) {
             out.close();
         }
+        log_mtx.lock();
         std::cout << "map task " << mapTaskNumber << " ends" << std::endl;
+        log_mtx.unlock();
     }
 
-    void reduceTask(int reduceTaskNumber) {
-        std::cout << "reduce task " << reduceTaskNumber << " starts" << std::endl;
+    void reduceTask(int reduceTaskNumber, int workerId) {
+        log_mtx.lock();
+        std::cout << "reduce task " << reduceTaskNumber << " is assigned to worker " << workerId << " and starts" << std::endl;
+        log_mtx.unlock();
         std::unordered_map<std::string, int> counts;
         for (int i = 0; i < nMap; ++i) {
             std::ifstream inFile(outputDir + "/map.part-" + std::to_string(i) + "-" + std::to_string(reduceTaskNumber) + ".txt");
@@ -140,11 +146,15 @@ private:
         for (const auto& [word, count] : counts) {
             outFile << word << "," << count << "\n";
         }
+        log_mtx.lock();
         std::cout << "reduce task " << reduceTaskNumber << " ends" << std::endl;
+        log_mtx.unlock();
     }
 
     void mergeOutput() {
+        log_mtx.lock();
         std::cout << "merge the output files" << std::endl;
+        log_mtx.unlock();
         std::ofstream finalOutput(outputDir + "/output.txt");
         for (int i = 0; i < nReduce; ++i) {
             std::ifstream reduceOutput(outputDir + "/reduce.part-" + std::to_string(i) + ".txt");
@@ -155,7 +165,7 @@ public:
     Master(const std::string& inputDir, const std::string& outputDir, int nWorkers, int nReduce) : inputDir(inputDir), outputDir(outputDir), nWorkers(nWorkers), nReduce(nReduce) {
         workers.reserve(nWorkers);
         for(int i = 0; i < nWorkers; i++){
-            workers.emplace_back(&Master::worker, this);
+            workers.emplace_back(&Master::worker, this, i);
         }
     }
     ~Master(){
@@ -186,8 +196,8 @@ public:
             if(entry.is_regular_file()){
                 auto path = entry.path().string();
                 int map_task_number = nMap;
-                auto task = [this, path, map_task_number](){
-                    this -> mapTask(path, map_task_number);
+                auto task = [this, path, map_task_number](int workerId){
+                    this -> mapTask(path, map_task_number, workerId);
                 };
                 {
                     std::unique_lock<std::mutex> lock(queue_mtx);
@@ -207,8 +217,8 @@ public:
 
         // Schedule reduce tasks
         for(int i = 0; i < nReduce; i++){
-            auto task = [this, i](){
-                this -> reduceTask(i);
+            auto task = [this, i](int workerId){
+                this -> reduceTask(i, workerId);
             };
             {
                 std::unique_lock<std::mutex> lock(queue_mtx);
@@ -227,8 +237,10 @@ public:
        
         // Merge the outputs
         mergeOutput();
-
+        
+        log_mtx.lock();
         std::cout << "MapReduce job completed successfully." << std::endl;
+        log_mtx.unlock();
     }
 };
 
